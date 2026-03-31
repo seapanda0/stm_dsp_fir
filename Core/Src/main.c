@@ -75,14 +75,14 @@ static void MX_TIM4_Init(void);
 #define N_TAPS  8
 #define Q_SCALE 128
 
-#define COEFF_0  0x01  /*    1 -> +0.007812  (float: +0.008755) */
-#define COEFF_1  0x06  /*    6 -> +0.046875  (float: +0.047949) */
-#define COEFF_2  0x15  /*   21 -> +0.164062  (float: +0.164024) */
-#define COEFF_3  0x24  /*   36 -> +0.281250  (float: +0.279272) */
-#define COEFF_4  0x24  /*   36 -> +0.281250  (float: +0.279272) */
-#define COEFF_5  0x15  /*   21 -> +0.164062  (float: +0.164024) */
-#define COEFF_6  0x06  /*    6 -> +0.046875  (float: +0.047949) */
-#define COEFF_7  0x01  /*    1 -> +0.007812  (float: +0.008755) */
+#define COEFF_0  0x02  /*    2 -> +0.015625  (float: +0.017406) */
+#define COEFF_1  0x08  /*    8 -> +0.062500  (float: +0.061207) */
+#define COEFF_2  0x15  /*   21 -> +0.164062  (float: +0.166164) */
+#define COEFF_3  0x21  /*   33 -> +0.257812  (float: +0.255222) */
+#define COEFF_4  0x21  /*   33 -> +0.257812  (float: +0.255222) */
+#define COEFF_5  0x15  /*   21 -> +0.164062  (float: +0.166164) */
+#define COEFF_6  0x08  /*    8 -> +0.062500  (float: +0.061207) */
+#define COEFF_7  0x02  /*    2 -> +0.015625  (float: +0.017406) */
 
 const int8_t fir_coeffs[N_TAPS] = {
     (int8_t)COEFF_0  /*    1 */,
@@ -96,26 +96,31 @@ const int8_t fir_coeffs[N_TAPS] = {
 };
 
 int8_t data_pipeline[N_TAPS];
+int32_t output_temp;
 int32_t output;
 
 volatile int update_flag;
 volatile int8_t AD_RES;
 
+uint32_t adc_raw;
+
 void compute_fir(){
 	data_pipeline[0] = AD_RES;
 
-	output =  (int32_t)data_pipeline[0]*(int32_t)fir_coeffs[0];
-	output += (int32_t)data_pipeline[1]*(int32_t)fir_coeffs[1];
-	output += (int32_t)data_pipeline[2]*(int32_t)fir_coeffs[2];
-	output += (int32_t)data_pipeline[3]*(int32_t)fir_coeffs[3];
-	output += (int32_t)data_pipeline[4]*(int32_t)fir_coeffs[4];
-	output += (int32_t)data_pipeline[5]*(int32_t)fir_coeffs[5];
-	output += (int32_t)data_pipeline[6]*(int32_t)fir_coeffs[6];
-	output += (int32_t)data_pipeline[7]*(int32_t)fir_coeffs[7];
+	output_temp =  (int32_t)data_pipeline[0]*(int32_t)fir_coeffs[0];
+	output_temp += (int32_t)data_pipeline[1]*(int32_t)fir_coeffs[1];
+	output_temp += (int32_t)data_pipeline[2]*(int32_t)fir_coeffs[2];
+	output_temp += (int32_t)data_pipeline[3]*(int32_t)fir_coeffs[3];
+	output_temp += (int32_t)data_pipeline[4]*(int32_t)fir_coeffs[4];
+	output_temp += (int32_t)data_pipeline[5]*(int32_t)fir_coeffs[5];
+	output_temp += (int32_t)data_pipeline[6]*(int32_t)fir_coeffs[6];
+	output_temp += (int32_t)data_pipeline[7]*(int32_t)fir_coeffs[7];
 
-	output = output >> 7;
-	if (output > 127) output = 127;
-	if (output < -128) output = -128;
+	output_temp = output_temp >> 7;
+	if (output_temp > 127) output_temp = 127;
+	if (output_temp < -128) output_temp = -128;
+
+	output = output_temp;
 
 	data_pipeline[7] = data_pipeline[6];
 	data_pipeline[6] = data_pipeline[5];
@@ -129,7 +134,11 @@ void compute_fir(){
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     AD_RES = (int8_t)(((int16_t)HAL_ADC_GetValue(&hadc1)) - Q_SCALE);
-	update_flag = 1;
+
+//    AD_RES = HAL_ADC_GetValue(&hadc1);
+//    adc_raw = HAL_ADC_GetValue(&hadc1);
+
+    update_flag = 1;
 
 }
 /* USER CODE END 0 */
